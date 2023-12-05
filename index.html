@@ -1,0 +1,33 @@
+<html>
+
+<head>
+    <style>
+        #svgContainer {
+            background-color: gray;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+        }
+
+        #controls > * {
+            margin: 10px;
+        }
+
+        svg {
+            outline: 1px solid black;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="svgContainer">
+    </div>
+    <div id="controls">
+        <input type="file" id="fileInput" accept=".svg" />
+        <button id="downloadButton" style="display: none;">Download SVG</button>
+    </div>
+
+    <script src="svg.js"></script>
+</body>
+
+</html>
