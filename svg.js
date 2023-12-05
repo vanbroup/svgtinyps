@@ -19,11 +19,12 @@ const ALLOWED_ATTRIBUTES = {
     text: ["about", "class", "color", "color-rendering", "content", "datatype", "direction", "display-align", "editable", "fill", "fill-opacity", "fill-rule", "font-family", "font-size", "font-style", "font-variant", "font-weight", "id", "line-increment", "property", "rel", "requiredFonts", "resource", "rev", "role", "rotate", "solid-color", "solid-opacity", "stop-color", "stop-opacity", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke-width", "systemLanguage", "text-align", "text-anchor", "transform", "typeof", "unicode-bidi", "vector-effect", "x", "xml:base", "xml:id", "xml:lang", "xml:space", "y"],
     g: ["about", "class", "color", "color-rendering", "content", "datatype", "direction", "display-align", "fill", "fill-opacity", "fill-rule", "font-family", "font-size", "font-style", "font-variant", "font-weight", "id", "line-increment", "property", "rel", "requiredFonts", "resource", "rev", "role", "solid-color", "solid-opacity", "stop-color", "stop-opacity", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke-width", "systemLanguage", "text-align", "text-anchor", "transform", "typeof", "unicode-bidi", "vector-effect", "xml:base", "xml:id", "xml:lang", "xml:space"],
     defs: ["about", "class", "color", "color-rendering", "content", "datatype", "direction", "display-align", "fill", "fill-opacity", "fill-rule", "font-family", "font-size", "font-style", "font-variant", "font-weight", "id", "line-increment", "property", "rel", "resource", "rev", "role", "solid-color", "solid-opacity", "stop-color", "stop-opacity", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke-width", "text-align", "text-anchor", "typeof", "unicode-bidi", "vector-effect", "xml:base", "xml:id", "xml:lang", "xml:space"],
-    use: ["about", "class", "color", "color-rendering", "content", "datatype", "direction", "display-align", "fill", "fill-opacity", "fill-rule", "font-family", "font-size", "font-style", "font-variant", "font-weight", "href", "id", "line-increment", "property", "rel", "requiredFonts", "resource", "rev", "role", "solid-color", "solid-opacity", "stop-color", "stop-opacity", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke-width", "systemLanguage", "text-align", "text-anchor", "transform", "typeof", "unicode-bidi", "vector-effect", "x", "xml:base", "xml:id", "xml:lang", "xml:space", "y"]
+    use: ["about", "class", "color", "color-rendering", "content", "datatype", "direction", "display-align", "fill", "fill-opacity", "fill-rule", "font-family", "font-size", "font-style", "font-variant", "font-weight", "href", "id", "line-increment", "property", "rel", "requiredFonts", "resource", "rev", "role", "solid-color", "solid-opacity", "stop-color", "stop-opacity", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke-width", "systemLanguage", "text-align", "text-anchor", "transform", "typeof", "unicode-bidi", "vector-effect", "x", "xml:base", "xml:id", "xml:lang", "xml:space", "y"],
+    stop: ["stop-color", "offset"]
 }
 
 const ALLOWED_ELEMENTS = [
-    "circle", "defs", "desc", "ellipse", "g", "line", "linearGradient", "path", "polygon", "polyline", "radialGradient", "rect", "solidColor", "svg", "text", "textArea", "title", "use"
+    "circle", "defs", "desc", "ellipse", "g", "line", "linearGradient", "path", "polygon", "polyline", "radialGradient", "rect", "solidColor", "stop", "svg", "text", "textArea", "title", "use"
 ];
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -101,8 +102,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const defaultStyles = getDefaultStyles(element);
 
             // Extract user-applied styles for each element
-            const userStyles = getUserStyles(element);
-
+            const userStyles = getStylesObject(element, window);
+            
             // Compare default and user styles to get the differing properties
             const differingStyles = getDifferingStyles(defaultStyles, userStyles);
 
@@ -112,7 +113,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     continue;
                 }
                 element.setAttribute(name, value);
-                console.log('setAttribute ' + name + ' = ' + value)
+                console.log('setAttribute ' + name + ' = ' + value +" on element "+ element.tagName)
+            }
+
+            // Include styles defined on element
+            for (let i = 0; i < element.style.length; i++) {
+                const name = element.style[i];
+                const value = element.style[element.style[i]];
+
+                element.setAttribute(name, value);
+                console.log('setAttribute ' + name + ' = ' + value +" on element "+ element.tagName)
             }
         });
     }
@@ -120,7 +130,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function getDifferingStyles(defaultStyles, userStyles) {
         const differingStyles = {};
 
-        // Compare default and user styles to get the differing properties
         for (const [property, defaultValue] of Object.entries(defaultStyles)) {
             const userValue = userStyles[property];
             if (userValue !== undefined && userValue !== defaultValue) {
@@ -133,7 +142,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function getDefaultStyles(element) {
         // Create an invisible element to get default styles
-        const tempElement = document.createElement(element.tagName);
+        const tempElement = document.createElement('svg');
+
+        // Create an invisible element to get default styles
+        const tempElementTag = document.createElement(element.tagName);
+        tempElement.appendChild(tempElementTag);
 
         // Append the temporary element to the body
         document.body.appendChild(tempElement);
@@ -145,20 +158,6 @@ document.addEventListener('DOMContentLoaded', function () {
         tempElement.remove();
 
         return defaultStyles;
-    }
-
-    function getUserStyles(node) {
-        const defaultStyles = getDefaultStyles(node);
-        const styles = getStylesObject(node, window);
-        let userStyles = {};
-
-        for (let property in defaultStyles) {
-            if (styles[property] !== defaultStyles[property]) {
-                userStyles[property] = styles[property];
-            }
-        }
-
-        return userStyles;
     }
 
     function getStylesObject(node, parentWindow) {
