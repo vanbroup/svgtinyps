@@ -2,7 +2,7 @@
 
 // Define allowed attributes for each element
 const ALLOWED_ATTRIBUTES = {
-    svg: ["about", "baseProfile", "class", "color", "color-rendering", "content", "contentScriptType", "datatype", "direction", "display-align", "externalResourcesRequired", "fill", "fill-opacity", "fill-rule", "focusable", "font-family", "font-size", "font-style", "font-variant", "font-weight", "height", "line-increment", "playbackOrder", "preserveAspectRatio", "property", "rel", "resource", "rev", "role", "snapshotTime", "solid-color", "solid-opacity", "stop-color", "stop-opacity", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke-width", "text-align", "text-anchor", "timelineBegin", "typeof", "unicode-bidi", "vector-effect", "version", "viewBox", "width", "xml:base", "xml:lang", "xml:space", "zoomAndPan"],
+    svg: ["about", "baseProfile", "class", "color", "color-rendering", "content", "contentScriptType", "datatype", "direction", "display-align", "externalResourcesRequired", "fill", "fill-opacity", "fill-rule", "focusable", "font-family", "font-size", "font-style", "font-variant", "font-weight", "height", "line-increment", "playbackOrder", "preserveAspectRatio", "property", "rel", "resource", "rev", "role", "snapshotTime", "solid-color", "solid-opacity", "stop-color", "stop-opacity", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke-width", "text-align", "text-anchor", "timelineBegin", "typeof", "unicode-bidi", "vector-effect", "version", "viewBox", "width", "xml:base", "xml:lang", "xml:space", "xmlns", "zoomAndPan"],
     desc: ["about", "buffered-rendering", "class", "content", "datatype", "display", "id", "image-rendering", "property", "rel", "requiredFonts", "resource", "rev", "role", "shape-rendering", "systemLanguage", "text-rendering", "typeof", "viewport-fill", "viewport-fill-opacity", "visibility", "xml:base", "xml:id", "xml:lang", "xml:space"],
     title: ["about", "buffered-rendering", "class", "content", "datatype", "display", "id", "image-rendering", "property", "rel", "requiredFonts", "resource", "rev", "role", "shape-rendering", "systemLanguage", "text-rendering", "typeof", "viewport-fill", "viewport-fill-opacity", "visibility", "xml:base", "xml:id", "xml:lang", "xml:space"],
     path: ["about", "class", "color", "color-rendering", "content", "d", "datatype", "direction", "display-align", "fill", "fill-opacity", "fill-rule", "font-family", "font-size", "font-style", "font-variant", "font-weight", "id", "line-increment", "pathLength", "property", "rel", "requiredFonts", "resource", "rev", "role", "solid-color", "solid-opacity", "stop-color", "stop-opacity", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke-width", "systemLanguage", "text-align", "text-anchor", "transform", "typeof", "unicode-bidi", "vector-effect", "xml:base", "xml:id", "xml:lang", "xml:space"],
@@ -27,9 +27,46 @@ const ALLOWED_ELEMENTS = [
     "circle", "defs", "desc", "ellipse", "g", "line", "linearGradient", "path", "polygon", "polyline", "radialGradient", "rect", "solidColor", "stop", "svg", "text", "textArea", "title", "use"
 ];
 
+const SVG_NS = "http://www.w3.org/2000/svg"
+
 document.addEventListener('DOMContentLoaded', function () {
     const fileInput = document.getElementById('fileInput');
     const svgContainer = document.getElementById('svgContainer');
+
+    padding.addEventListener('change', function (event) {
+        const svg = svgContainer.querySelector('svg')
+        const bg = svg.getElementById('background')
+
+        let config = {}
+        config.padding = (event.target.value / 100)
+        config.background = bg.getAttribute('fill')
+
+        // Update viewbox, center and add padding
+        setViewBox(svg, config);
+        console.log(`Setting padding to ${config.padding}`);
+    });
+
+
+    title.addEventListener('change', function (event) {
+        if (event.target.value.trim() === '') {
+            return;
+        }
+        const svg = svgContainer.querySelector('svg')
+
+        const titleElement = svg.querySelector('title');
+        titleElement.textContent = event.target.value.trim();
+
+        console.log(`Setting title to '${event.target.value.trim()}'`);
+    });
+
+    background.addEventListener('change', function (event) {
+        const svg = svgContainer.querySelector('svg')
+
+        const rectElement = svg.querySelector('#background');
+        rectElement.setAttribute('fill', event.target.value);
+
+        console.log(`Setting background to ${event.target.value}`);
+    });
 
     fileInput.addEventListener('change', function (event) {
         // Unload SVG image
@@ -46,21 +83,38 @@ document.addEventListener('DOMContentLoaded', function () {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(e.target.result, 'image/svg+xml');
                 const svgContent = doc.querySelector('svg');
+                
+                let config = {}
+                config.title = title.value
+                config.padding = (padding.value / 100)
+                config.background = background.value
 
-                const title = file.name.substring(0, file.name.lastIndexOf('.')) || file.name
+                if (config.title === "") {
+                    const titleElement = svgContent.querySelector('title');
+                    if (titleElement) {
+                        config.title = titleElement.textContent;
+                    } else {
+                        config.title = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                    }
+                    // Upper case first char is all lowercase
+                    if (config.title === config.title.toLowerCase()) {
+                        config.title = config.title.charAt(0).toUpperCase() + config.title.slice(1);
+                    }
+                    title.value = config.title;
+                }
 
                 // Convert to SVG Tiny PS (for security) but retain styles for now to allow conversion
-                const svg = svgContainer.insertAdjacentElement("beforeend", convertToSvgTinyPS(svgContent, title, true));
+                const svg = svgContainer.insertAdjacentElement("beforeend", convertToSvgTinyPS(svgContent, config, true));
                 svg.removeAttribute('width');
                 svg.removeAttribute('height');
 
                 convertStyles(svg)
 
                 // Convert again to remove styles and new attributes that are not allowed
-                svg.replaceWith(convertToSvgTinyPS(svg, title, false))
+                svg.replaceWith(convertToSvgTinyPS(svg, config, false))
 
                 // Update viewbox, center and add padding
-                setViewBox(svg);
+                setViewBox(svg, config);
 
                 // Show the download button
                 downloadButton.setAttribute('data-filename', 'converted-'+ file.name);
@@ -77,8 +131,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Add a click event to the download button
     downloadButton.addEventListener('click', function () {
+        const xmlHeader = '<?xml version="1.0" encoding="utf-8"?>\n';
         const svgContent = svgContainer.innerHTML;
-        const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+        const blob = new Blob([xmlHeader + svgContent], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
 
         const a = document.createElement('a');
@@ -98,6 +153,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function convertStyles(svg) {
         // Iterate through SVG elements
         svg.querySelectorAll('*').forEach(element => {
+            if (['title', 'defs', 'desc', 'style'].includes(element.tagName)) {
+                return;
+            }
+
             // Get default styles for each element
             const defaultStyles = getDefaultStyles(element);
 
@@ -188,7 +247,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     x.tagName !== 'defs' &&
                     x.tagName !== 'style' &&
                     x.tagName !== 'title' &&
-                    x.tagName !== 'desc'
+                    x.tagName !== 'desc' &&
+                    x.id !== 'background'
             );
 
             if (
@@ -229,21 +289,25 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Function to convert SVG to SVG Tiny PS
-    function convertToSvgTinyPS(svg, title, retainStyle) {
+    function convertToSvgTinyPS(svg, config, retainStyle) {
+        svg.setAttribute('version', '1.2');
+        svg.setAttribute('baseProfile', 'tiny-ps');
+        svg.setAttribute('xmlns', SVG_NS);
+        
         const titleElement = svg.querySelector('title');
-        svg.setAttribute("version", "1.2");
-        svg.setAttribute("baseProfile", "tiny-ps");
-
-        if (!titleElement) {
-            // Create a new title element
-            const newTitleElement = document.createElement('title');
-            newTitleElement.textContent = title;
-
-            // Append the new title element to the SVG
-            svg.insertAdjacentElement("afterbegin", newTitleElement);
-
-            console.log('Added title element to <svg>');
+        if (titleElement) {
+            titleElement.remove();
         }
+
+        // Create a new title element
+        const newTitleElement = document.createElementNS(SVG_NS, 'title');
+        newTitleElement.textContent = config.title.trim();
+        console.log(newTitleElement)
+
+        // Append the new title element to the SVG
+        svg.insertAdjacentElement('afterbegin', newTitleElement);
+
+        console.log(`Added title element with value '${config.title.trim()}' to <svg>`);
 
         // Remove non-conforming attributes from SVG element (case-insensitive)
         [...svg.attributes].forEach(attribute => {
@@ -285,8 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
         [...element.children].forEach(child => removeNonConforming(child, retainStyle));
     }
 
-
-    function setViewBox(svg) {
+    function setViewBox(svg, config) {
         const coords = getCoords(svg);
 
         // Calculate new viewBox dimensions
@@ -295,19 +358,41 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Use the maximum of width and height to make it a square
         // add 20% padding, 10% left of each side
-        const padding = Math.max(width, height) * 0.2;
+        const padding = Math.max(width, height) * config.padding;
         const squareSize = Math.max(width, height) + padding;
 
         // Calculate center coordinates
         const center = squareSize / 2;
 
+        const x = center - (width / 2) - padding
+        const y = -(center - (height / 2))
+
         // Set viewBox based on new coordinates and square size
         svg.setAttribute(
             'viewBox',
-            `${center - (width / 2) - padding} -${center - (height / 2)} ${squareSize} ${squareSize}`
+            `${x} ${y} ${squareSize} ${squareSize}`
         );
 
-        return svg; // Return the SVG element
-    }
+        // Remove background if set
+        const bg = svg.getElementById('background');
+        if (bg !== null) {
+            bg.remove();
+        }
+
+        // Add a solid background
+        const newRect = document.createElementNS(SVG_NS, 'rect');
+        newRect.setAttribute('id', 'background');
+        newRect.setAttribute('x', x);
+        newRect.setAttribute('y', y);
+        newRect.setAttribute('width', '100%');
+        newRect.setAttribute('height', '100%');
+        newRect.setAttribute('fill', config.background);
+
+        // Prepend the new background to the SVG after the title element
+        const title = svg.querySelector('title');
+        title.insertAdjacentElement('afterend', newRect);
+
+        return svg;
+    }       
 });
 
